@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.TableGenerator;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
@@ -26,7 +27,16 @@ import lombok.Setter;
 public class Item {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @TableGenerator(
+            name = "items_id_generator",
+            table = "id_generators",
+            pkColumnName = "entity_name",
+            valueColumnName = "next_id",
+            pkColumnValue = "items",
+            allocationSize = 1
+    )
+    @GeneratedValue(strategy = GenerationType.TABLE, generator = "items_id_generator")
+    @Column(columnDefinition = "INTEGER")
     private Long id;
 
     @NotBlank
