@@ -62,6 +62,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/items/*").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/orders/*/status").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/admin/orders").hasRole("ADMIN")
+                        .requestMatchers(
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**"
+                        ).permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2

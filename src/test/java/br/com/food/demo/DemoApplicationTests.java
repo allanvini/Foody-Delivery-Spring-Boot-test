@@ -144,6 +144,21 @@ class DemoApplicationTests {
 	}
 
 	@Test
+	void swaggerDocumentationIsPublicAndDescribesTheApi() throws Exception {
+		mockMvc.perform(get("/v3/api-docs"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.info.title").value("Food Delivery API"))
+				.andExpect(jsonPath("$.components.securitySchemes.bearerAuth").exists())
+				.andExpect(jsonPath("$.paths['/api/auth/login'].post.requestBody").exists())
+				.andExpect(jsonPath("$.paths['/api/items'].post.requestBody").exists())
+				.andExpect(jsonPath("$.paths['/api/orders'].post.requestBody").exists())
+				.andExpect(jsonPath("$.paths['/api/admin/orders'].get").exists());
+
+		mockMvc.perform(get("/swagger-ui.html"))
+				.andExpect(status().is3xxRedirection());
+	}
+
+	@Test
 	void completeAuthenticationAndProtectedRoutesFlow() throws Exception {
 		String email = "cliente@example.com";
 		String rawPassword = "senha-segura";

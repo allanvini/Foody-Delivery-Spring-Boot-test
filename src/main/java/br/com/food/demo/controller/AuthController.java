@@ -14,10 +14,13 @@ import br.com.food.demo.dto.RegisterResponse;
 import br.com.food.demo.dto.TokenResponse;
 import br.com.food.demo.security.JwtCookieService;
 import br.com.food.demo.service.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "Autenticação", description = "Cadastro, login e logout")
 public class AuthController {
 
     private final AuthService authService;
@@ -29,6 +32,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
+    @Operation(summary = "Cadastrar usuário", description = "Cria um usuário com role User e já retorna seu JWT.")
     public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
         RegisterResponse registerResponse = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -37,6 +41,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @Operation(summary = "Autenticar usuário", description = "Retorna o JWT no corpo e no cookie access_token.")
     public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
         TokenResponse tokenResponse = authService.login(request);
         return ResponseEntity.ok()
@@ -45,6 +50,7 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
+    @Operation(summary = "Encerrar autenticação", description = "Remove o cookie access_token do cliente.")
     public ResponseEntity<Void> logout() {
         return ResponseEntity.noContent()
                 .header(HttpHeaders.SET_COOKIE, jwtCookieService.clear().toString())

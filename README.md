@@ -15,6 +15,7 @@ API REST de demonstração para um sistema de delivery, construída com Java 26,
 - Jakarta Validation
 - SQLite
 - Lombok
+- OpenAPI 3 e Swagger UI com Springdoc 3.0.3
 - Maven Wrapper
 
 ## Requisitos
@@ -52,6 +53,29 @@ http://localhost:8080
 ```
 
 O arquivo `database.db` será criado automaticamente na raiz do projeto. As roles, os status dos pedidos e o administrador padrão são inseridos de forma idempotente ao iniciar a aplicação.
+
+## Swagger e documentação OpenAPI
+
+Com a aplicação em execução, abra:
+
+```text
+http://localhost:8080/swagger-ui.html
+```
+
+A especificação OpenAPI em JSON também está disponível em:
+
+```text
+http://localhost:8080/v3/api-docs
+```
+
+O Swagger mostra os endpoints, schemas, validações e exemplos de payload. Para testar uma rota protegida pela interface:
+
+1. Execute `POST /api/auth/login`.
+2. Copie somente o valor de `accessToken` retornado.
+3. Clique em **Authorize** no topo do Swagger.
+4. Cole o token no campo `bearerAuth` e confirme.
+
+Não é necessário adicionar o prefixo `Bearer` no campo do Swagger.
 
 ## Usuário administrador de demonstração
 

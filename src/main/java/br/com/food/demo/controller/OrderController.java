@@ -19,10 +19,17 @@ import br.com.food.demo.dto.OrderResponse;
 import br.com.food.demo.dto.UpdateOrderStatusRequest;
 import br.com.food.demo.dto.UpdateOrderStatusResponse;
 import br.com.food.demo.service.OrderService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+
+import static br.com.food.demo.config.OpenApiConfig.BEARER_AUTH;
 
 @RestController
 @RequestMapping("/api/orders")
+@Tag(name = "Pedidos", description = "Pedidos do usuário autenticado e atualização de status")
+@SecurityRequirement(name = BEARER_AUTH)
 public class OrderController {
 
     private final OrderService orderService;
@@ -32,12 +39,14 @@ public class OrderController {
     }
 
     @GetMapping
+    @Operation(summary = "Listar meus pedidos")
     public List<OrderResponse> findMyOrders(@AuthenticationPrincipal Jwt jwt) {
         return orderService.findByUserId(Long.valueOf(jwt.getSubject()));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Criar pedido", description = "Calcula o total, baixa o estoque e associa o pedido ao JWT.")
     public OrderResponse create(
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody CreateOrderRequest request
@@ -46,6 +55,7 @@ public class OrderController {
     }
 
     @PatchMapping("/{orderId}/status")
+    @Operation(summary = "Atualizar status do pedido", description = "Disponível somente para administradores.")
     public UpdateOrderStatusResponse updateStatus(
             @PathVariable Long orderId,
             @Valid @RequestBody UpdateOrderStatusRequest request
