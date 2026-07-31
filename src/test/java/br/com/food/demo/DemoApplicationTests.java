@@ -71,6 +71,33 @@ class DemoApplicationTests {
 	void contextLoads() {
 		assertEquals(2, roleRepository.count());
 		assertEquals(9, orderStatusRepository.count());
+
+		User admin = userRepository.findByEmailIgnoreCase("admin@admin.com").orElseThrow();
+		Role adminRole = roleRepository.findByName("Admin").orElseThrow();
+		assertEquals(adminRole.getId(), admin.getRole().getId());
+		assertTrue(passwordEncoder.matches("1234", admin.getPassword()));
+	}
+
+	@Test
+	void seededAdminCanAuthenticate() throws Exception {
+		String loginResponse = mockMvc.perform(post("/api/auth/login")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "email": "admin@admin.com",
+						  "password": "1234"
+						}
+						"""))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.tokenType").value("Bearer"))
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+
+		String accessToken = JsonPath.read(loginResponse, "$.accessToken");
+		Jwt jwt = jwtDecoder.decode(accessToken);
+		assertEquals("admin@admin.com", jwt.getClaimAsString("email"));
+		assertEquals("ADMIN", jwt.getClaimAsStringList("roles").getFirst());
 	}
 
 	@Test
