@@ -1,5 +1,6 @@
 package br.com.food.demo.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ForeignKey;
@@ -10,7 +11,9 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.TableGenerator;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -29,7 +32,16 @@ import lombok.Setter;
 public class OrderItem {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @TableGenerator(
+            name = "orders_items_id_generator",
+            table = "id_generators",
+            pkColumnName = "entity_name",
+            valueColumnName = "next_id",
+            pkColumnValue = "orders_items",
+            allocationSize = 1
+    )
+    @GeneratedValue(strategy = GenerationType.TABLE, generator = "orders_items_id_generator")
+    @Column(columnDefinition = "INTEGER")
     private Long id;
 
     @NotNull
@@ -49,4 +61,9 @@ public class OrderItem {
             foreignKey = @ForeignKey(name = "fk_orders_items_item")
     )
     private Item item;
+
+    @NotNull
+    @Positive
+    @Column(nullable = false, columnDefinition = "INTEGER DEFAULT 1")
+    private Integer quantity = 1;
 }

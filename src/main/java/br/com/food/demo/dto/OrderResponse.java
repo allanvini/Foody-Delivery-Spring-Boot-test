@@ -9,6 +9,7 @@ public record OrderResponse(
         Long id,
         String status,
         BigDecimal total,
+        String observations,
         List<OrderItemResponse> items
 ) {
 
@@ -17,6 +18,7 @@ public record OrderResponse(
                 order.getId(),
                 order.getStatus().getName(),
                 order.getTotal(),
+                order.getObservations(),
                 items
         );
     }

@@ -123,6 +123,25 @@ Authorization: Bearer <accessToken>
 
 Essa rota utiliza o identificador presente no JWT e não retorna pedidos pertencentes a outros usuários.
 
+Cada item do pedido informa sua quantidade. As observações opcionais pertencem ao pedido como um todo:
+
+```json
+{
+  "id": 1,
+  "status": "Aguardando confirmação",
+  "total": 59.80,
+  "observations": "Entregar na portaria",
+  "items": [
+    {
+      "id": 1,
+      "name": "Hambúrguer",
+      "price": 29.90,
+      "quantity": 2
+    }
+  ]
+}
+```
+
 ## Testando pelo Insomnia
 
 1. Inicie a aplicação.

@@ -160,8 +160,11 @@ class DemoApplicationTests {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(1))
 				.andExpect(jsonPath("$[0].status").value("Aguardando confirmação"))
-				.andExpect(jsonPath("$[0].total").value(29.90))
-				.andExpect(jsonPath("$[0].items[0].name").value("Hambúrguer"));
+				.andExpect(jsonPath("$[0].total").value(59.80))
+				.andExpect(jsonPath("$[0].observations").value("Entregar na portaria"))
+				.andExpect(jsonPath("$[0].items[0].name").value("Hambúrguer"))
+				.andExpect(jsonPath("$[0].items[0].quantity").value(2))
+				.andExpect(jsonPath("$[0].items[0].observations").doesNotExist());
 	}
 
 	private void createOrderFor(User user) {
@@ -174,12 +177,14 @@ class DemoApplicationTests {
 		Order order = new Order();
 		order.setUser(user);
 		order.setStatus(defaultOrderStatus());
-		order.setTotal(new BigDecimal("29.90"));
+		order.setTotal(new BigDecimal("59.80"));
+		order.setObservations("Entregar na portaria");
 		order = orderRepository.save(order);
 
 		OrderItem orderItem = new OrderItem();
 		orderItem.setOrder(order);
 		orderItem.setItem(item);
+		orderItem.setQuantity(2);
 		orderItemRepository.save(orderItem);
 	}
 
