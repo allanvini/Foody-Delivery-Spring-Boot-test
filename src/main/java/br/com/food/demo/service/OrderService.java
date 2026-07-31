@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import br.com.food.demo.dto.AdminOrderResponse;
 import br.com.food.demo.dto.CreateOrderItemRequest;
 import br.com.food.demo.dto.CreateOrderRequest;
 import br.com.food.demo.dto.OrderItemResponse;
@@ -62,17 +63,26 @@ public class OrderService {
             return List.of();
         }
 
-        List<Long> orderIds = orders.stream().map(Order::getId).toList();
-        Map<Long, List<OrderItemResponse>> itemsByOrderId = orderItemRepository
-                .findAllByOrder_IdIn(orderIds)
-                .stream()
-                .collect(Collectors.groupingBy(
-                        orderItem -> orderItem.getOrder().getId(),
-                        Collectors.mapping(OrderItemResponse::from, Collectors.toList())
-                ));
+        Map<Long, List<OrderItemResponse>> itemsByOrderId = findItemsByOrderId(orders);
 
         return orders.stream()
                 .map(order -> OrderResponse.from(
+                        order,
+                        itemsByOrderId.getOrDefault(order.getId(), List.of())
+                ))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminOrderResponse> findAllForAdmin() {
+        List<Order> orders = orderRepository.findAllByOrderByIdDesc();
+        if (orders.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, List<OrderItemResponse>> itemsByOrderId = findItemsByOrderId(orders);
+        return orders.stream()
+                .map(order -> AdminOrderResponse.from(
                         order,
                         itemsByOrderId.getOrDefault(order.getId(), List.of())
                 ))
@@ -150,6 +160,15 @@ public class OrderService {
         orderItem.setItem(item);
         orderItem.setQuantity(quantity);
         return orderItem;
+    }
+
+    private Map<Long, List<OrderItemResponse>> findItemsByOrderId(List<Order> orders) {
+        List<Long> orderIds = orders.stream().map(Order::getId).toList();
+        return orderItemRepository.findAllByOrder_IdIn(orderIds).stream()
+                .collect(Collectors.groupingBy(
+                        orderItem -> orderItem.getOrder().getId(),
+                        Collectors.mapping(OrderItemResponse::from, Collectors.toList())
+                ));
     }
 
     private String normalizeObservations(String observations) {

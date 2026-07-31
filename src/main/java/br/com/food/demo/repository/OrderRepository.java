@@ -11,4 +11,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @EntityGraph(attributePaths = "status")
     List<Order> findAllByUserIdOrderByIdDesc(Long userId);
+
+    @EntityGraph(attributePaths = {"status", "user", "user.role"})
+    List<Order> findAllByOrderByIdDesc();
 }

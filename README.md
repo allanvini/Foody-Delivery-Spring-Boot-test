@@ -255,6 +255,43 @@ Cada item do pedido informa sua quantidade. As observações opcionais pertencem
 }
 ```
 
+### Listar todos os pedidos — somente Admin
+
+```http
+GET /api/admin/orders
+Authorization: Bearer <accessTokenAdmin>
+```
+
+Os pedidos são retornados do mais recente para o mais antigo e incluem os dados do usuário responsável:
+
+```json
+[
+  {
+    "id": 1,
+    "user": {
+      "id": 2,
+      "name": "Cliente Teste",
+      "email": "cliente@example.com",
+      "address": "Rua das Flores, 123",
+      "role": "User"
+    },
+    "status": "Aguardando confirmação",
+    "total": 59.80,
+    "observations": "Entregar na portaria",
+    "items": [
+      {
+        "id": 1,
+        "name": "Hambúrguer",
+        "price": 29.90,
+        "quantity": 2
+      }
+    ]
+  }
+]
+```
+
+Depois de identificar o pedido, o administrador pode atualizar seu status com `PATCH /api/orders/{orderId}/status`.
+
 ## Testando pelo Insomnia
 
 1. Inicie a aplicação.

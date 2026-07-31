@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
@@ -316,6 +317,26 @@ class DemoApplicationTests {
 		long orderId = orderIdValue.longValue();
 
 		assertEquals(3, itemRepository.findById(itemId).orElseThrow().getStock());
+
+		mockMvc.perform(get("/api/orders")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].id").value(orderId));
+
+		mockMvc.perform(get("/api/admin/orders")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken))
+				.andExpect(status().isForbidden());
+
+		var adminOrdersResult = mockMvc.perform(get("/api/admin/orders")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+				.andExpect(status().isOk())
+				.andReturn();
+		List<String> orderUserEmails = JsonPath.read(
+				adminOrdersResult.getResponse().getContentAsString(),
+				"$[?(@.id == " + orderId + ")].user.email"
+		);
+		assertEquals(List.of("pedido@example.com"), orderUserEmails);
 
 		OrderStatus confirmedStatus = orderStatusRepository.findByName("Pedido Confirmado").orElseThrow();
 		String updateStatusPayload = """
