@@ -13,6 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import br.com.food.demo.dto.LoginRequest;
 import br.com.food.demo.dto.RegisterRequest;
+import br.com.food.demo.dto.RegisterResponse;
 import br.com.food.demo.dto.TokenResponse;
 import br.com.food.demo.dto.UserResponse;
 import br.com.food.demo.entity.Role;
@@ -46,7 +47,7 @@ public class AuthService {
     }
 
     @Transactional
-    public UserResponse register(RegisterRequest request) {
+    public RegisterResponse register(RegisterRequest request) {
         String email = normalizeEmail(request.email());
         if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email já cadastrado");
@@ -62,7 +63,10 @@ public class AuthService {
         user.setRole(role);
 
         User savedUser = userRepository.save(user);
-        return toResponse(savedUser);
+        return new RegisterResponse(
+                toResponse(savedUser),
+                jwtService.generateToken(savedUser)
+        );
     }
 
     @Transactional(readOnly = true)

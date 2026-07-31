@@ -83,6 +83,26 @@ Content-Type: application/json
 
 O nome é opcional. Quando não for informado, será obtido da parte do e-mail anterior ao `@`. Todo cadastro feito por essa rota recebe a role `User`.
 
+O cadastro já autentica o novo usuário, grava o cookie `access_token` e retorna:
+
+```json
+{
+  "user": {
+    "id": 2,
+    "name": "cliente",
+    "email": "cliente@example.com",
+    "role": "User"
+  },
+  "token": {
+    "accessToken": "eyJ...",
+    "tokenType": "Bearer",
+    "expiresIn": 3600
+  }
+}
+```
+
+Não é necessário chamar a rota de login depois do cadastro.
+
 ### Login
 
 ```http

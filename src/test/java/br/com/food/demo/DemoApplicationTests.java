@@ -129,7 +129,7 @@ class DemoApplicationTests {
 		String email = "cliente@example.com";
 		String rawPassword = "senha-segura";
 
-		mockMvc.perform(post("/api/auth/register")
+		var registerResult = mockMvc.perform(post("/api/auth/register")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -138,38 +138,30 @@ class DemoApplicationTests {
 						}
 						"""))
 				.andExpect(status().isCreated())
-				.andExpect(jsonPath("$.name").value("cliente"))
-				.andExpect(jsonPath("$.email").value(email))
-				.andExpect(jsonPath("$.role").value("User"))
-				.andExpect(jsonPath("$.password").doesNotExist());
+				.andExpect(jsonPath("$.user.name").value("cliente"))
+				.andExpect(jsonPath("$.user.email").value(email))
+				.andExpect(jsonPath("$.user.role").value("User"))
+				.andExpect(jsonPath("$.user.password").doesNotExist())
+				.andExpect(jsonPath("$.token.tokenType").value("Bearer"))
+				.andExpect(jsonPath("$.token.expiresIn").value(3600))
+				.andReturn();
+
+		String registerResponse = registerResult.getResponse().getContentAsString();
+		String accessToken = JsonPath.read(registerResponse, "$.token.accessToken");
+		String registerCookie = registerResult.getResponse().getHeader(HttpHeaders.SET_COOKIE);
+		assertTrue(registerCookie.contains("access_token="));
 
 		User user = userRepository.findByEmailIgnoreCase(email).orElseThrow();
 		assertFalse(rawPassword.equals(user.getPassword()));
 		assertTrue(passwordEncoder.matches(rawPassword, user.getPassword()));
 
-		createOrderFor(user);
-		createOrderForAnotherUser();
-
-		String loginResponse = mockMvc.perform(post("/api/auth/login")
-				.contentType(MediaType.APPLICATION_JSON)
-				.content("""
-						{
-						  "email": "cliente@example.com",
-						  "password": "senha-segura"
-						}
-						"""))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.tokenType").value("Bearer"))
-				.andExpect(jsonPath("$.expiresIn").value(3600))
-				.andReturn()
-				.getResponse()
-				.getContentAsString();
-
-		String accessToken = JsonPath.read(loginResponse, "$.accessToken");
 		Jwt jwt = jwtDecoder.decode(accessToken);
 		assertEquals(user.getId().toString(), jwt.getSubject());
 		assertEquals(email, jwt.getClaimAsString("email"));
 		assertEquals("USER", jwt.getClaimAsStringList("roles").getFirst());
+
+		createOrderFor(user);
+		createOrderForAnotherUser();
 
 		mockMvc.perform(get("/api/items"))
 				.andExpect(status().isUnauthorized());

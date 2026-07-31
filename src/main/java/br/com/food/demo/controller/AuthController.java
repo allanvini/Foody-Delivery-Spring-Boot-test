@@ -6,13 +6,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import br.com.food.demo.dto.LoginRequest;
 import br.com.food.demo.dto.RegisterRequest;
+import br.com.food.demo.dto.RegisterResponse;
 import br.com.food.demo.dto.TokenResponse;
-import br.com.food.demo.dto.UserResponse;
 import br.com.food.demo.security.JwtCookieService;
 import br.com.food.demo.service.AuthService;
 import jakarta.validation.Valid;
@@ -30,9 +29,11 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    @ResponseStatus(HttpStatus.CREATED)
-    public UserResponse register(@Valid @RequestBody RegisterRequest request) {
-        return authService.register(request);
+    public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
+        RegisterResponse registerResponse = authService.register(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .header(HttpHeaders.SET_COOKIE, jwtCookieService.create(registerResponse.token()).toString())
+                .body(registerResponse);
     }
 
     @PostMapping("/login")
