@@ -107,12 +107,24 @@ A resposta contém um `accessToken` com validade de uma hora:
 }
 ```
 
+O mesmo token também é enviado no cookie `access_token` com os atributos `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api` e `Max-Age=3600`. O corpo com o token foi mantido para compatibilidade com clientes que utilizam o header `Authorization`, como o Insomnia.
+
+### Logout
+
+```http
+POST /api/auth/logout
+```
+
+O logout remove o cookie do navegador. Como o JWT é stateless, uma cópia previamente obtida do token continua válida até sua expiração.
+
 ### Listar itens
 
 ```http
 GET /api/items
 Authorization: Bearer <accessToken>
 ```
+
+No navegador, o header pode ser omitido quando o cookie é enviado com a requisição.
 
 ### Listar os pedidos do usuário autenticado
 
@@ -148,6 +160,40 @@ Cada item do pedido informa sua quantidade. As observações opcionais pertencem
 2. Faça `POST /api/auth/login` usando o administrador padrão ou um usuário cadastrado.
 3. Copie o campo `accessToken` da resposta.
 4. Nas requisições protegidas, selecione autenticação do tipo **Bearer Token** e cole o token.
+
+## Consumindo pelo front-end
+
+O navegador somente envia cookies em requisições para outra origem quando `credentials` está habilitado:
+
+```javascript
+await fetch("http://localhost:8080/api/auth/login", {
+  method: "POST",
+  credentials: "include",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    email: "admin@admin.com",
+    password: "1234"
+  })
+});
+
+const orders = await fetch("http://localhost:8080/api/orders", {
+  credentials: "include"
+});
+```
+
+Por padrão, o CORS aceita os front-ends locais nas portas `3000`, `5173` e `4200` e permite credenciais. Em outra origem, configure antes de iniciar:
+
+```bash
+CORS_ALLOWED_ORIGINS=https://app.exemplo.com ./mvnw spring-boot:run
+```
+
+O cookie é `Secure` por padrão. Se o navegador usado no desenvolvimento não aceitar o cookie em HTTP local, execute somente no ambiente local com:
+
+```bash
+JWT_COOKIE_SECURE=false ./mvnw spring-boot:run
+```
+
+Em produção, mantenha `JWT_COOKIE_SECURE=true` e HTTPS. `SameSite=Strict` pressupõe que front-end e API estejam no mesmo site; caso estejam em sites diferentes, será necessário avaliar `SameSite=None`, HTTPS e proteção CSRF antes da publicação.
 
 ## Executando os testes
 

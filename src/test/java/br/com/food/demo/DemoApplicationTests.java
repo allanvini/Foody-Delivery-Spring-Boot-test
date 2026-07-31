@@ -4,12 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
 
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -80,7 +82,7 @@ class DemoApplicationTests {
 
 	@Test
 	void seededAdminCanAuthenticate() throws Exception {
-		String loginResponse = mockMvc.perform(post("/api/auth/login")
+		var loginResult = mockMvc.perform(post("/api/auth/login")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -90,14 +92,36 @@ class DemoApplicationTests {
 						"""))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.tokenType").value("Bearer"))
-				.andReturn()
-				.getResponse()
-				.getContentAsString();
+				.andReturn();
+
+		String loginResponse = loginResult.getResponse().getContentAsString();
+		String setCookie = loginResult.getResponse().getHeader(HttpHeaders.SET_COOKIE);
+		assertTrue(setCookie.contains("access_token="));
+		assertTrue(setCookie.contains("Path=/api"));
+		assertTrue(setCookie.contains("Secure"));
+		assertTrue(setCookie.contains("HttpOnly"));
+		assertTrue(setCookie.contains("SameSite=Strict"));
+		assertTrue(setCookie.contains("Max-Age=3600"));
 
 		String accessToken = JsonPath.read(loginResponse, "$.accessToken");
 		Jwt jwt = jwtDecoder.decode(accessToken);
 		assertEquals("admin@admin.com", jwt.getClaimAsString("email"));
 		assertEquals("ADMIN", jwt.getClaimAsStringList("roles").getFirst());
+	}
+
+	@Test
+	void corsAllowsConfiguredFrontendWithCredentials() throws Exception {
+		String frontendOrigin = "http://localhost:5173";
+
+		var corsResponse = mockMvc.perform(options("/api/orders")
+				.header(HttpHeaders.ORIGIN, frontendOrigin)
+				.header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET"))
+				.andExpect(status().isOk())
+				.andReturn()
+				.getResponse();
+
+		assertEquals(frontendOrigin, corsResponse.getHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN));
+		assertEquals("true", corsResponse.getHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS));
 	}
 
 	@Test
@@ -156,7 +180,7 @@ class DemoApplicationTests {
 				.andExpect(jsonPath("$[0].name").value("Hambúrguer"));
 
 		mockMvc.perform(get("/api/orders")
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+				.cookie(new Cookie("access_token", accessToken)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(1))
 				.andExpect(jsonPath("$[0].status").value("Aguardando confirmação"))
@@ -165,6 +189,14 @@ class DemoApplicationTests {
 				.andExpect(jsonPath("$[0].items[0].name").value("Hambúrguer"))
 				.andExpect(jsonPath("$[0].items[0].quantity").value(2))
 				.andExpect(jsonPath("$[0].items[0].observations").doesNotExist());
+
+		var logoutResult = mockMvc.perform(post("/api/auth/logout")
+				.cookie(new Cookie("access_token", accessToken)))
+				.andExpect(status().isNoContent())
+				.andReturn();
+		String clearedCookie = logoutResult.getResponse().getHeader(HttpHeaders.SET_COOKIE);
+		assertTrue(clearedCookie.contains("access_token="));
+		assertTrue(clearedCookie.contains("Max-Age=0"));
 	}
 
 	private void createOrderFor(User user) {
