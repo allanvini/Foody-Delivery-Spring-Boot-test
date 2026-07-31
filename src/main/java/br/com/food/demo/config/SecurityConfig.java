@@ -57,6 +57,10 @@ public class SecurityConfig {
                                 "/api/auth/register",
                                 "/api/auth/login",
                                 "/api/auth/logout").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/items").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/items/*").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/items/*").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/orders/*/status").hasRole("ADMIN")
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2

@@ -4,8 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -207,6 +210,159 @@ class DemoApplicationTests {
 		String clearedCookie = logoutResult.getResponse().getHeader(HttpHeaders.SET_COOKIE);
 		assertTrue(clearedCookie.contains("access_token="));
 		assertTrue(clearedCookie.contains("Max-Age=0"));
+	}
+
+	@Test
+	void adminItemManagementAndCustomerOrderFlow() throws Exception {
+		var adminLoginResult = mockMvc.perform(post("/api/auth/login")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "email": "admin@admin.com",
+						  "password": "1234"
+						}
+						"""))
+				.andExpect(status().isOk())
+				.andReturn();
+		String adminToken = JsonPath.read(
+				adminLoginResult.getResponse().getContentAsString(),
+				"$.accessToken"
+		);
+
+		var registerResult = mockMvc.perform(post("/api/auth/register")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "name": "Cliente Pedido",
+						  "address": "Rua do Pedido, 10",
+						  "email": "pedido@example.com",
+						  "password": "senha-segura"
+						}
+						"""))
+				.andExpect(status().isCreated())
+				.andReturn();
+		String customerToken = JsonPath.read(
+				registerResult.getResponse().getContentAsString(),
+				"$.token.accessToken"
+		);
+
+		mockMvc.perform(post("/api/items")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "name": "Item sem permissão",
+						  "price": 1.00,
+						  "stock": 1
+						}
+						"""))
+				.andExpect(status().isForbidden());
+
+		var createItemResult = mockMvc.perform(post("/api/items")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "name": "Pizza de teste",
+						  "price": 25.50,
+						  "stock": 5
+						}
+						"""))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.name").value("Pizza de teste"))
+				.andReturn();
+		Number itemIdValue = JsonPath.read(createItemResult.getResponse().getContentAsString(), "$.id");
+		long itemId = itemIdValue.longValue();
+
+		mockMvc.perform(put("/api/items/{itemId}", itemId)
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "name": "Pizza grande de teste",
+						  "price": 30.00,
+						  "stock": 5
+						}
+						"""))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.name").value("Pizza grande de teste"))
+				.andExpect(jsonPath("$.price").value(30.00));
+
+		mockMvc.perform(get("/api/order-statuses")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(9))
+				.andExpect(jsonPath("$[0].name").value("Aguardando confirmação"));
+
+		var createOrderResult = mockMvc.perform(post("/api/orders")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "items": [
+						    { "id": %d, "quantity": 2 }
+						  ],
+						  "observations": "Sem cebola"
+						}
+						""".formatted(itemId)))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.status").value("Aguardando confirmação"))
+				.andExpect(jsonPath("$.total").value(60.00))
+				.andExpect(jsonPath("$.observations").value("Sem cebola"))
+				.andExpect(jsonPath("$.items[0].id").value(itemId))
+				.andExpect(jsonPath("$.items[0].quantity").value(2))
+				.andReturn();
+		Number orderIdValue = JsonPath.read(createOrderResult.getResponse().getContentAsString(), "$.id");
+		long orderId = orderIdValue.longValue();
+
+		assertEquals(3, itemRepository.findById(itemId).orElseThrow().getStock());
+
+		OrderStatus confirmedStatus = orderStatusRepository.findByName("Pedido Confirmado").orElseThrow();
+		String updateStatusPayload = """
+				{
+				  "statusId": %d
+				}
+				""".formatted(confirmedStatus.getId());
+
+		mockMvc.perform(patch("/api/orders/{orderId}/status", orderId)
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(updateStatusPayload))
+				.andExpect(status().isForbidden());
+
+		mockMvc.perform(patch("/api/orders/{orderId}/status", orderId)
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(updateStatusPayload))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.orderId").value(orderId))
+				.andExpect(jsonPath("$.statusId").value(confirmedStatus.getId()))
+				.andExpect(jsonPath("$.status").value("Pedido Confirmado"));
+
+		mockMvc.perform(delete("/api/items/{itemId}", itemId)
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+				.andExpect(status().isConflict());
+
+		var disposableItemResult = mockMvc.perform(post("/api/items")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "name": "Item descartável",
+						  "price": 5.00,
+						  "stock": 1
+						}
+						"""))
+				.andExpect(status().isCreated())
+				.andReturn();
+		Number disposableItemIdValue = JsonPath.read(
+				disposableItemResult.getResponse().getContentAsString(),
+				"$.id"
+		);
+
+		mockMvc.perform(delete("/api/items/{itemId}", disposableItemIdValue.longValue())
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+				.andExpect(status().isNoContent());
 	}
 
 	private void createOrderFor(User user) {

@@ -11,9 +11,10 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.TableGenerator;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -32,16 +33,8 @@ import lombok.Setter;
 public class OrderItem {
 
     @Id
-    @TableGenerator(
-            name = "orders_items_id_generator",
-            table = "id_generators",
-            pkColumnName = "entity_name",
-            valueColumnName = "next_id",
-            pkColumnValue = "orders_items",
-            allocationSize = 1
-    )
-    @GeneratedValue(strategy = GenerationType.TABLE, generator = "orders_items_id_generator")
-    @Column(columnDefinition = "INTEGER")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @JdbcTypeCode(SqlTypes.INTEGER)
     private Long id;
 
     @NotNull
@@ -64,6 +57,6 @@ public class OrderItem {
 
     @NotNull
     @Positive
-    @Column(nullable = false, columnDefinition = "INTEGER DEFAULT 1")
+    @Column(nullable = false)
     private Integer quantity = 1;
 }

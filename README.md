@@ -63,7 +63,7 @@ Role:  Admin
 
 A senha também é armazenada como hash BCrypt. Essas credenciais existem somente para facilitar a avaliação do projeto e devem ser removidas ou substituídas em um ambiente real.
 
-Atualmente não há uma rota exclusiva de administrador. A diferença pode ser verificada no claim `roles` do JWT, que será `ADMIN` para esse usuário.
+As rotas de criação, edição e remoção de itens e a atualização do status dos pedidos são exclusivas dessa role. O claim `roles` do JWT desse usuário contém `ADMIN`.
 
 ## Rotas
 
@@ -149,6 +149,84 @@ Authorization: Bearer <accessToken>
 
 No navegador, o header pode ser omitido quando o cookie é enviado com a requisição.
 
+### Criar item — somente Admin
+
+```http
+POST /api/items
+Authorization: Bearer <accessTokenAdmin>
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Hambúrguer",
+  "price": 29.90,
+  "stock": 20
+}
+```
+
+### Editar item — somente Admin
+
+```http
+PUT /api/items/1
+Authorization: Bearer <accessTokenAdmin>
+Content-Type: application/json
+```
+
+O corpo possui o mesmo formato da criação e representa todos os dados editáveis do item.
+
+### Remover item — somente Admin
+
+```http
+DELETE /api/items/1
+Authorization: Bearer <accessTokenAdmin>
+```
+
+Um item que já pertença a um pedido não pode ser removido; nesse caso, a API responde com `409 Conflict` para preservar o histórico.
+
+### Criar pedido
+
+```http
+POST /api/orders
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+```
+
+```json
+{
+  "items": [
+    { "id": 1, "quantity": 2 },
+    { "id": 3, "quantity": 1 }
+  ],
+  "observations": "Entregar na portaria"
+}
+```
+
+O pedido é associado ao usuário do JWT e começa com o status `Aguardando confirmação`. A API consulta os preços atuais, calcula o total e baixa as quantidades do estoque dentro da mesma transação. Itens repetidos, quantidades inválidas, itens inexistentes e estoque insuficiente são rejeitados.
+
+### Listar status de pedido
+
+```http
+GET /api/order-statuses
+Authorization: Bearer <accessToken>
+```
+
+A resposta contém os nove status cadastrados na seed, com seus respectivos IDs para uso na atualização administrativa.
+
+### Atualizar status — somente Admin
+
+```http
+PATCH /api/orders/1/status
+Authorization: Bearer <accessTokenAdmin>
+Content-Type: application/json
+```
+
+```json
+{
+  "statusId": 2
+}
+```
+
 ### Listar os pedidos do usuário autenticado
 
 ```http
@@ -224,7 +302,7 @@ Em produção, mantenha `JWT_COOKIE_SECURE=true` e HTTPS. `SameSite=Strict` pres
 ./mvnw test
 ```
 
-Os testes validam as seeds, o hash BCrypt, o login do administrador, a emissão e validação do JWT, a proteção das rotas e o isolamento dos pedidos por usuário.
+Os testes validam as seeds, o hash BCrypt, o login do administrador, a emissão e validação do JWT, as permissões de Admin, o CRUD de itens, a criação de pedidos com baixa de estoque, a atualização de status e o isolamento dos pedidos por usuário.
 
 ## Gerando o pacote executável
 
