@@ -77,7 +77,22 @@ class DemoApplicationTests {
 		User admin = userRepository.findByEmailIgnoreCase("admin@admin.com").orElseThrow();
 		Role adminRole = roleRepository.findByName("Admin").orElseThrow();
 		assertEquals(adminRole.getId(), admin.getRole().getId());
+		assertEquals("Admin", admin.getName());
+		assertEquals("Não se aplica", admin.getAddress());
 		assertTrue(passwordEncoder.matches("1234", admin.getPassword()));
+	}
+
+	@Test
+	void registerRequiresNameAndAddress() throws Exception {
+		mockMvc.perform(post("/api/auth/register")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "email": "sem-dados@example.com",
+						  "password": "senha-segura"
+						}
+						"""))
+				.andExpect(status().isBadRequest());
 	}
 
 	@Test
@@ -133,13 +148,16 @@ class DemoApplicationTests {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
+						  "name": "Cliente Teste",
+						  "address": "Rua das Flores, 123",
 						  "email": "cliente@example.com",
 						  "password": "senha-segura"
 						}
 						"""))
 				.andExpect(status().isCreated())
-				.andExpect(jsonPath("$.user.name").value("cliente"))
+				.andExpect(jsonPath("$.user.name").value("Cliente Teste"))
 				.andExpect(jsonPath("$.user.email").value(email))
+				.andExpect(jsonPath("$.user.address").value("Rua das Flores, 123"))
 				.andExpect(jsonPath("$.user.role").value("User"))
 				.andExpect(jsonPath("$.user.password").doesNotExist())
 				.andExpect(jsonPath("$.token.tokenType").value("Bearer"))
@@ -217,6 +235,7 @@ class DemoApplicationTests {
 
 		User anotherUser = new User();
 		anotherUser.setName("Outro cliente");
+		anotherUser.setAddress("Avenida Central, 456");
 		anotherUser.setEmail("outro@example.com");
 		anotherUser.setPassword(passwordEncoder.encode("outra-senha"));
 		anotherUser.setRole(role);

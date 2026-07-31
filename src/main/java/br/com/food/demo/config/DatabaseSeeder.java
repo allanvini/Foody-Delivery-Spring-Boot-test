@@ -84,7 +84,8 @@ public class DatabaseSeeder implements ApplicationRunner {
                 .orElseThrow(() -> new IllegalStateException("Role Admin não cadastrada"));
 
         User admin = new User();
-        admin.setName("Administrador");
+        admin.setName("Admin");
+        admin.setAddress("Não se aplica");
         admin.setEmail(ADMIN_EMAIL);
         admin.setPassword(passwordEncoder.encode(ADMIN_PASSWORD));
         admin.setRole(adminRole);

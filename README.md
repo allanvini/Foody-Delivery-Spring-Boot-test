@@ -76,12 +76,14 @@ Content-Type: application/json
 
 ```json
 {
+  "name": "Cliente Teste",
+  "address": "Rua das Flores, 123",
   "email": "cliente@example.com",
   "password": "senha-segura"
 }
 ```
 
-O nome é opcional. Quando não for informado, será obtido da parte do e-mail anterior ao `@`. Todo cadastro feito por essa rota recebe a role `User`.
+O nome, o endereço, o e-mail e a senha são obrigatórios. Todo cadastro feito por essa rota recebe a role `User`.
 
 O cadastro já autentica o novo usuário, grava o cookie `access_token` e retorna:
 
@@ -89,8 +91,9 @@ O cadastro já autentica o novo usuário, grava o cookie `access_token` e retorn
 {
   "user": {
     "id": 2,
-    "name": "cliente",
+    "name": "Cliente Teste",
     "email": "cliente@example.com",
+    "address": "Rua das Flores, 123",
     "role": "User"
   },
   "token": {

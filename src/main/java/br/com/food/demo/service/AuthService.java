@@ -57,7 +57,8 @@ public class AuthService {
                 .orElseThrow(() -> new IllegalStateException("Role padrão não cadastrada"));
 
         User user = new User();
-        user.setName(resolveName(request.name(), email));
+        user.setName(request.name().trim());
+        user.setAddress(request.address().trim());
         user.setEmail(email);
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setRole(role);
@@ -96,18 +97,12 @@ public class AuthService {
         return email.trim().toLowerCase(Locale.ROOT);
     }
 
-    private String resolveName(String requestedName, String email) {
-        if (requestedName != null && !requestedName.isBlank()) {
-            return requestedName.trim();
-        }
-        return email.substring(0, email.indexOf('@'));
-    }
-
     private UserResponse toResponse(User user) {
         return new UserResponse(
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
+                user.getAddress(),
                 user.getRole().getName()
         );
     }

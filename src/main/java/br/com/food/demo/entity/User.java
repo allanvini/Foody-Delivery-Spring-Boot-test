@@ -48,6 +48,11 @@ public class User {
     private String name;
 
     @NotBlank
+    @Size(max = 500)
+    @Column(nullable = false, length = 500)
+    private String address;
+
+    @NotBlank
     @Email
     @Size(max = 255)
     @Column(nullable = false, length = 255)
