@@ -13,6 +13,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 
 import jakarta.servlet.http.Cookie;
@@ -110,23 +112,48 @@ class DemoApplicationTests {
 						}
 				"""))
 				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.accessToken").doesNotExist())
 				.andExpect(jsonPath("$.tokenType").value("Bearer"))
 				.andExpect(jsonPath("$.role").value("ADMIN"))
 				.andReturn();
 
-		String loginResponse = loginResult.getResponse().getContentAsString();
-		String setCookie = loginResult.getResponse().getHeader(HttpHeaders.SET_COOKIE);
-		assertTrue(setCookie.contains("access_token="));
-		assertTrue(setCookie.contains("Path=/api"));
-		assertTrue(setCookie.contains("Secure"));
-		assertTrue(setCookie.contains("HttpOnly"));
-		assertTrue(setCookie.contains("SameSite=Strict"));
-		assertTrue(setCookie.contains("Max-Age=3600"));
+		List<String> setCookies = loginResult.getResponse().getHeaders(HttpHeaders.SET_COOKIE);
+		String accessTokenCookie = findSetCookie(setCookies, "access_token");
+		assertTrue(accessTokenCookie.contains("Path=/api"));
+		assertTrue(accessTokenCookie.contains("Secure"));
+		assertTrue(accessTokenCookie.contains("HttpOnly"));
+		assertTrue(accessTokenCookie.contains("SameSite=Strict"));
+		assertTrue(accessTokenCookie.contains("Max-Age=3600"));
 
-		String accessToken = JsonPath.read(loginResponse, "$.accessToken");
+		String userDataCookie = findSetCookie(setCookies, "user-data");
+		assertTrue(userDataCookie.contains("Path=/"));
+		assertTrue(userDataCookie.contains("Secure"));
+		assertFalse(userDataCookie.contains("HttpOnly"));
+		assertTrue(userDataCookie.contains("SameSite=Strict"));
+		assertTrue(userDataCookie.contains("Max-Age=3600"));
+		String userData = decodeUserData(cookieValue(userDataCookie));
+		assertEquals("ADMIN", JsonPath.read(userData, "$.role"));
+		assertEquals("admin@admin.com", JsonPath.read(userData, "$.email"));
+
+		String accessToken = cookieValue(accessTokenCookie);
 		Jwt jwt = jwtDecoder.decode(accessToken);
 		assertEquals("admin@admin.com", jwt.getClaimAsString("email"));
 		assertEquals("ADMIN", jwt.getClaimAsStringList("roles").getFirst());
+
+		mockMvc.perform(get("/api/items")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+				.andExpect(status().isUnauthorized());
+
+		mockMvc.perform(post("/api/auth/login")
+				.cookie(new Cookie("access_token", "token-antigo"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "email": "admin@admin.com",
+						  "password": "1234"
+						}
+						"""))
+				.andExpect(status().isOk());
 	}
 
 	@Test
@@ -149,7 +176,9 @@ class DemoApplicationTests {
 		mockMvc.perform(get("/v3/api-docs"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.info.title").value("Foody Delivery API"))
-				.andExpect(jsonPath("$.components.securitySchemes.bearerAuth").exists())
+				.andExpect(jsonPath("$.components.securitySchemes.cookieAuth").exists())
+				.andExpect(jsonPath("$.components.securitySchemes.cookieAuth.in").value("cookie"))
+				.andExpect(jsonPath("$.components.schemas.SessionResponse.properties.accessToken").doesNotExist())
 				.andExpect(jsonPath("$.paths['/api/auth/login'].post.requestBody").exists())
 				.andExpect(jsonPath("$.paths['/api/items'].post.requestBody").exists())
 				.andExpect(jsonPath("$.paths['/api/orders'].post.requestBody").exists())
@@ -178,17 +207,18 @@ class DemoApplicationTests {
 				.andExpect(jsonPath("$.user.name").value("Cliente Teste"))
 				.andExpect(jsonPath("$.user.email").value(email))
 				.andExpect(jsonPath("$.user.address").value("Rua das Flores, 123"))
-				.andExpect(jsonPath("$.user.role").value("User"))
+				.andExpect(jsonPath("$.user.role").value("USER"))
 				.andExpect(jsonPath("$.user.password").doesNotExist())
+				.andExpect(jsonPath("$.token.accessToken").doesNotExist())
 				.andExpect(jsonPath("$.token.tokenType").value("Bearer"))
 				.andExpect(jsonPath("$.token.expiresIn").value(3600))
 				.andExpect(jsonPath("$.token.role").value("USER"))
 				.andReturn();
 
-		String registerResponse = registerResult.getResponse().getContentAsString();
-		String accessToken = JsonPath.read(registerResponse, "$.token.accessToken");
-		String registerCookie = registerResult.getResponse().getHeader(HttpHeaders.SET_COOKIE);
-		assertTrue(registerCookie.contains("access_token="));
+		List<String> registerCookies = registerResult.getResponse().getHeaders(HttpHeaders.SET_COOKIE);
+		String accessToken = cookieValue(findSetCookie(registerCookies, "access_token"));
+		String userData = decodeUserData(cookieValue(findSetCookie(registerCookies, "user-data")));
+		assertEquals("USER", JsonPath.read(userData, "$.role"));
 
 		User user = userRepository.findByEmailIgnoreCase(email).orElseThrow();
 		assertFalse(rawPassword.equals(user.getPassword()));
@@ -206,7 +236,7 @@ class DemoApplicationTests {
 				.andExpect(status().isUnauthorized());
 
 		mockMvc.perform(get("/api/items")
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+				.cookie(new Cookie("access_token", accessToken)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[0].name").value("Hambúrguer"));
 
@@ -225,9 +255,9 @@ class DemoApplicationTests {
 				.cookie(new Cookie("access_token", accessToken)))
 				.andExpect(status().isNoContent())
 				.andReturn();
-		String clearedCookie = logoutResult.getResponse().getHeader(HttpHeaders.SET_COOKIE);
-		assertTrue(clearedCookie.contains("access_token="));
-		assertTrue(clearedCookie.contains("Max-Age=0"));
+		List<String> clearedCookies = logoutResult.getResponse().getHeaders(HttpHeaders.SET_COOKIE);
+		assertTrue(findSetCookie(clearedCookies, "access_token").contains("Max-Age=0"));
+		assertTrue(findSetCookie(clearedCookies, "user-data").contains("Max-Age=0"));
 	}
 
 	@Test
@@ -242,10 +272,10 @@ class DemoApplicationTests {
 						"""))
 				.andExpect(status().isOk())
 				.andReturn();
-		String adminToken = JsonPath.read(
-				adminLoginResult.getResponse().getContentAsString(),
-				"$.accessToken"
-		);
+		String adminToken = cookieValue(findSetCookie(
+				adminLoginResult.getResponse().getHeaders(HttpHeaders.SET_COOKIE),
+				"access_token"
+		));
 
 		var registerResult = mockMvc.perform(post("/api/auth/register")
 				.contentType(MediaType.APPLICATION_JSON)
@@ -259,13 +289,13 @@ class DemoApplicationTests {
 						"""))
 				.andExpect(status().isCreated())
 				.andReturn();
-		String customerToken = JsonPath.read(
-				registerResult.getResponse().getContentAsString(),
-				"$.token.accessToken"
-		);
+		String customerToken = cookieValue(findSetCookie(
+				registerResult.getResponse().getHeaders(HttpHeaders.SET_COOKIE),
+				"access_token"
+		));
 
 		mockMvc.perform(post("/api/items")
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken)
+				.cookie(new Cookie("access_token", customerToken))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -277,7 +307,7 @@ class DemoApplicationTests {
 				.andExpect(status().isForbidden());
 
 		var createItemResult = mockMvc.perform(post("/api/items")
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+				.cookie(new Cookie("access_token", adminToken))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -293,7 +323,7 @@ class DemoApplicationTests {
 		long itemId = itemIdValue.longValue();
 
 		mockMvc.perform(put("/api/items/{itemId}", itemId)
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+				.cookie(new Cookie("access_token", adminToken))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -307,13 +337,13 @@ class DemoApplicationTests {
 				.andExpect(jsonPath("$.price").value(30.00));
 
 		mockMvc.perform(get("/api/order-statuses")
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken))
+				.cookie(new Cookie("access_token", customerToken)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(9))
 				.andExpect(jsonPath("$[0].name").value("Aguardando confirmação"));
 
 		var createOrderResult = mockMvc.perform(post("/api/orders")
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken)
+				.cookie(new Cookie("access_token", customerToken))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -336,17 +366,17 @@ class DemoApplicationTests {
 		assertEquals(3, itemRepository.findById(itemId).orElseThrow().getStock());
 
 		mockMvc.perform(get("/api/orders")
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken))
+				.cookie(new Cookie("access_token", customerToken)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(1))
 				.andExpect(jsonPath("$[0].id").value(orderId));
 
 		mockMvc.perform(get("/api/admin/orders")
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken))
+				.cookie(new Cookie("access_token", customerToken)))
 				.andExpect(status().isForbidden());
 
 		var adminOrdersResult = mockMvc.perform(get("/api/admin/orders")
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+				.cookie(new Cookie("access_token", adminToken)))
 				.andExpect(status().isOk())
 				.andReturn();
 		List<String> orderUserEmails = JsonPath.read(
@@ -363,13 +393,13 @@ class DemoApplicationTests {
 				""".formatted(confirmedStatus.getId());
 
 		mockMvc.perform(patch("/api/orders/{orderId}/status", orderId)
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken)
+				.cookie(new Cookie("access_token", customerToken))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(updateStatusPayload))
 				.andExpect(status().isForbidden());
 
 		mockMvc.perform(patch("/api/orders/{orderId}/status", orderId)
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+				.cookie(new Cookie("access_token", adminToken))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(updateStatusPayload))
 				.andExpect(status().isOk())
@@ -378,11 +408,11 @@ class DemoApplicationTests {
 				.andExpect(jsonPath("$.status").value("Pedido Confirmado"));
 
 		mockMvc.perform(delete("/api/items/{itemId}", itemId)
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+				.cookie(new Cookie("access_token", adminToken)))
 				.andExpect(status().isConflict());
 
 		var disposableItemResult = mockMvc.perform(post("/api/items")
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+				.cookie(new Cookie("access_token", adminToken))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -399,7 +429,7 @@ class DemoApplicationTests {
 		);
 
 		mockMvc.perform(delete("/api/items/{itemId}", disposableItemIdValue.longValue())
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+				.cookie(new Cookie("access_token", adminToken)))
 				.andExpect(status().isNoContent());
 	}
 
@@ -444,6 +474,24 @@ class DemoApplicationTests {
 
 	private OrderStatus defaultOrderStatus() {
 		return orderStatusRepository.findByName("Aguardando confirmação").orElseThrow();
+	}
+
+	private String findSetCookie(List<String> cookies, String name) {
+		return cookies.stream()
+				.filter(cookie -> cookie.startsWith(name + "="))
+				.findFirst()
+				.orElseThrow(() -> new AssertionError("Cookie não encontrado: " + name));
+	}
+
+	private String cookieValue(String setCookie) {
+		int valueStart = setCookie.indexOf('=') + 1;
+		int valueEnd = setCookie.indexOf(';', valueStart);
+		return setCookie.substring(valueStart, valueEnd);
+	}
+
+	private String decodeUserData(String value) {
+		byte[] decoded = Base64.getUrlDecoder().decode(value);
+		return new String(decoded, StandardCharsets.UTF_8);
 	}
 
 }

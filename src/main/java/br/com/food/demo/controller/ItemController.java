@@ -21,12 +21,12 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
-import static br.com.food.demo.config.OpenApiConfig.BEARER_AUTH;
+import static br.com.food.demo.config.OpenApiConfig.COOKIE_AUTH;
 
 @RestController
 @RequestMapping("/api/items")
 @Tag(name = "Itens", description = "Cardápio e estoque")
-@SecurityRequirement(name = BEARER_AUTH)
+@SecurityRequirement(name = COOKIE_AUTH)
 public class ItemController {
 
     private final ItemService itemService;

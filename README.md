@@ -68,14 +68,7 @@ A especificação OpenAPI em JSON também está disponível em:
 http://localhost:8080/v3/api-docs
 ```
 
-O Swagger mostra os endpoints, schemas, validações e exemplos de payload. Para testar uma rota protegida pela interface:
-
-1. Execute `POST /api/auth/login`.
-2. Copie somente o valor de `accessToken` retornado.
-3. Clique em **Authorize** no topo do Swagger.
-4. Cole o token no campo `bearerAuth` e confirme.
-
-Não é necessário adicionar o prefixo `Bearer` no campo do Swagger.
+O Swagger mostra os endpoints, schemas, validações e exemplos de payload. Para testar uma rota protegida, execute primeiro `POST /api/auth/login`. O navegador armazena o cookie `access_token` e passa a enviá-lo automaticamente nas demais operações do Swagger.
 
 ## Usuário administrador de demonstração
 
@@ -118,10 +111,9 @@ O cadastro já autentica o novo usuário, grava o cookie `access_token` e retorn
     "name": "Cliente Teste",
     "email": "cliente@example.com",
     "address": "Rua das Flores, 123",
-    "role": "User"
+    "role": "USER"
   },
   "token": {
-    "accessToken": "eyJ...",
     "tokenType": "Bearer",
     "expiresIn": 3600,
     "role": "USER"
@@ -145,11 +137,10 @@ Content-Type: application/json
 }
 ```
 
-A resposta contém um `accessToken` com validade de uma hora:
+A resposta contém apenas metadados não secretos da sessão:
 
 ```json
 {
-  "accessToken": "eyJ...",
   "tokenType": "Bearer",
   "expiresIn": 3600,
   "role": "USER"
@@ -158,7 +149,9 @@ A resposta contém um `accessToken` com validade de uma hora:
 
 O campo `role` será `USER` para clientes comuns e `ADMIN` para administradores, permitindo que o front-end controle a exibição de funcionalidades administrativas.
 
-O mesmo token também é enviado no cookie `access_token` com os atributos `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api` e `Max-Age=3600`. O corpo com o token foi mantido para compatibilidade com clientes que utilizam o header `Authorization`, como o Insomnia.
+O JWT é enviado exclusivamente no cookie `access_token`, com os atributos `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api` e `Max-Age=3600`. Ele não é incluído no body e não pode ser lido pelo JavaScript.
+
+Também é criado o cookie `user-data`, com os dados não secretos do usuário codificados em Base64 URL, `Secure`, `SameSite=Strict`, `Path=/` e `Max-Age=3600`. Esse cookie permite que o frontend reconstrua a interface sem expor o JWT. Ele não participa da autenticação ou autorização no backend.
 
 ### Logout
 
@@ -166,22 +159,20 @@ O mesmo token também é enviado no cookie `access_token` com os atributos `Http
 POST /api/auth/logout
 ```
 
-O logout remove o cookie do navegador. Como o JWT é stateless, uma cópia previamente obtida do token continua válida até sua expiração.
+O logout remove os cookies `access_token` e `user-data` do navegador.
 
 ### Listar itens
 
 ```http
 GET /api/items
-Authorization: Bearer <accessToken>
 ```
 
-No navegador, o header pode ser omitido quando o cookie é enviado com a requisição.
+O cookie de autenticação é enviado automaticamente pelo navegador.
 
 ### Criar item — somente Admin
 
 ```http
 POST /api/items
-Authorization: Bearer <accessTokenAdmin>
 Content-Type: application/json
 ```
 
@@ -197,7 +188,6 @@ Content-Type: application/json
 
 ```http
 PUT /api/items/1
-Authorization: Bearer <accessTokenAdmin>
 Content-Type: application/json
 ```
 
@@ -207,7 +197,6 @@ O corpo possui o mesmo formato da criação e representa todos os dados editáve
 
 ```http
 DELETE /api/items/1
-Authorization: Bearer <accessTokenAdmin>
 ```
 
 Um item que já pertença a um pedido não pode ser removido; nesse caso, a API responde com `409 Conflict` para preservar o histórico.
@@ -216,7 +205,6 @@ Um item que já pertença a um pedido não pode ser removido; nesse caso, a API 
 
 ```http
 POST /api/orders
-Authorization: Bearer <accessToken>
 Content-Type: application/json
 ```
 
@@ -236,7 +224,6 @@ O pedido é associado ao usuário do JWT e começa com o status `Aguardando conf
 
 ```http
 GET /api/order-statuses
-Authorization: Bearer <accessToken>
 ```
 
 A resposta contém os nove status cadastrados na seed, com seus respectivos IDs para uso na atualização administrativa.
@@ -245,7 +232,6 @@ A resposta contém os nove status cadastrados na seed, com seus respectivos IDs 
 
 ```http
 PATCH /api/orders/1/status
-Authorization: Bearer <accessTokenAdmin>
 Content-Type: application/json
 ```
 
@@ -259,7 +245,6 @@ Content-Type: application/json
 
 ```http
 GET /api/orders
-Authorization: Bearer <accessToken>
 ```
 
 Essa rota utiliza o identificador presente no JWT e não retorna pedidos pertencentes a outros usuários.
@@ -287,7 +272,6 @@ Cada item do pedido informa sua quantidade. As observações opcionais pertencem
 
 ```http
 GET /api/admin/orders
-Authorization: Bearer <accessTokenAdmin>
 ```
 
 Os pedidos são retornados do mais recente para o mais antigo e incluem os dados do usuário responsável:
@@ -301,7 +285,7 @@ Os pedidos são retornados do mais recente para o mais antigo e incluem os dados
       "name": "Cliente Teste",
       "email": "cliente@example.com",
       "address": "Rua das Flores, 123",
-      "role": "User"
+      "role": "USER"
     },
     "status": "Aguardando confirmação",
     "total": 59.80,
@@ -323,9 +307,9 @@ Depois de identificar o pedido, o administrador pode atualizar seu status com `P
 ## Testando pelo Insomnia
 
 1. Inicie a aplicação.
-2. Faça `POST /api/auth/login` usando o administrador padrão ou um usuário cadastrado.
-3. Copie o campo `accessToken` da resposta.
-4. Nas requisições protegidas, selecione autenticação do tipo **Bearer Token** e cole o token.
+2. Ative o armazenamento de cookies do workspace no Insomnia.
+3. Faça `POST /api/auth/login` usando o administrador padrão ou um usuário cadastrado.
+4. O Insomnia armazenará `access_token` e o enviará automaticamente às rotas protegidas.
 
 ## Consumindo pelo front-end
 

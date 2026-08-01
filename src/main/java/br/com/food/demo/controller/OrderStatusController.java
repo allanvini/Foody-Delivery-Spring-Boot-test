@@ -12,12 +12,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
-import static br.com.food.demo.config.OpenApiConfig.BEARER_AUTH;
+import static br.com.food.demo.config.OpenApiConfig.COOKIE_AUTH;
 
 @RestController
 @RequestMapping("/api/order-statuses")
 @Tag(name = "Status de pedidos")
-@SecurityRequirement(name = BEARER_AUTH)
+@SecurityRequirement(name = COOKIE_AUTH)
 public class OrderStatusController {
 
     private final OrderStatusService orderStatusService;

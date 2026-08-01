@@ -12,8 +12,8 @@ import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
 
 import br.com.food.demo.config.JwtProperties;
-import br.com.food.demo.dto.TokenResponse;
 import br.com.food.demo.entity.User;
+import br.com.food.demo.security.IssuedToken;
 
 @Service
 public class JwtService {
@@ -26,7 +26,7 @@ public class JwtService {
         this.jwtProperties = jwtProperties;
     }
 
-    public TokenResponse generateToken(User user) {
+    public IssuedToken generateToken(User user) {
         Instant issuedAt = Instant.now();
         Instant expiresAt = issuedAt.plus(jwtProperties.accessTokenTtl());
         String role = user.getRole().getName().toUpperCase(Locale.ROOT);
@@ -45,7 +45,7 @@ public class JwtService {
                 .encode(JwtEncoderParameters.from(header, claims))
                 .getTokenValue();
 
-        return new TokenResponse(
+        return new IssuedToken(
                 token,
                 "Bearer",
                 jwtProperties.accessTokenTtl().toSeconds(),

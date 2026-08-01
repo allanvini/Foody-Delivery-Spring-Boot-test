@@ -11,7 +11,7 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 @Configuration
 public class OpenApiConfig {
 
-    public static final String BEARER_AUTH = "bearerAuth";
+    public static final String COOKIE_AUTH = "cookieAuth";
 
     @Bean
     OpenAPI foodDeliveryOpenApi() {
@@ -21,11 +21,10 @@ public class OpenApiConfig {
                         .description("API para autenticação, gerenciamento de itens e pedidos de delivery.")
                         .version("1.0.0"))
                 .components(new Components()
-                        .addSecuritySchemes(BEARER_AUTH, new SecurityScheme()
-                                .name(BEARER_AUTH)
-                                .type(SecurityScheme.Type.HTTP)
-                                .scheme("bearer")
-                                .bearerFormat("JWT")
-                                .description("Informe o accessToken retornado pelo login ou cadastro.")));
+                        .addSecuritySchemes(COOKIE_AUTH, new SecurityScheme()
+                                .name("access_token")
+                                .type(SecurityScheme.Type.APIKEY)
+                                .in(SecurityScheme.In.COOKIE)
+                                .description("JWT enviado automaticamente pelo cookie HttpOnly access_token.")));
     }
 }

@@ -31,7 +31,6 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
-import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -130,12 +129,12 @@ public class SecurityConfig {
 
     @Bean
     BearerTokenResolver bearerTokenResolver(JwtProperties jwtProperties) {
-        DefaultBearerTokenResolver authorizationHeaderResolver = new DefaultBearerTokenResolver();
-
         return request -> {
-            String authorizationHeaderToken = authorizationHeaderResolver.resolve(request);
-            if (authorizationHeaderToken != null) {
-                return authorizationHeaderToken;
+            String path = request.getRequestURI().substring(request.getContextPath().length());
+            if (path.equals("/api/auth/login")
+                    || path.equals("/api/auth/register")
+                    || path.equals("/api/auth/logout")) {
+                return null;
             }
 
             Cookie[] cookies = request.getCookies();
@@ -157,7 +156,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(corsProperties.allowedOrigins());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        configuration.setAllowedHeaders(List.of("Content-Type"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 

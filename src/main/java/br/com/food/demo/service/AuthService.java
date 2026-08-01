@@ -13,8 +13,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import br.com.food.demo.dto.LoginRequest;
 import br.com.food.demo.dto.RegisterRequest;
-import br.com.food.demo.dto.RegisterResponse;
-import br.com.food.demo.dto.TokenResponse;
 import br.com.food.demo.dto.UserResponse;
 import br.com.food.demo.entity.Role;
 import br.com.food.demo.entity.User;
@@ -47,7 +45,7 @@ public class AuthService {
     }
 
     @Transactional
-    public RegisterResponse register(RegisterRequest request) {
+    public AuthenticatedSession register(RegisterRequest request) {
         String email = normalizeEmail(request.email());
         if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email já cadastrado");
@@ -64,14 +62,14 @@ public class AuthService {
         user.setRole(role);
 
         User savedUser = userRepository.save(user);
-        return new RegisterResponse(
+        return new AuthenticatedSession(
                 toResponse(savedUser),
                 jwtService.generateToken(savedUser)
         );
     }
 
     @Transactional(readOnly = true)
-    public TokenResponse login(LoginRequest request) {
+    public AuthenticatedSession login(LoginRequest request) {
         String email = normalizeEmail(request.email());
         try {
             authenticationManager.authenticate(
@@ -90,7 +88,10 @@ public class AuthService {
                         HttpStatus.UNAUTHORIZED,
                         "Email ou senha inválidos"
                 ));
-        return jwtService.generateToken(user);
+        return new AuthenticatedSession(
+                toResponse(user),
+                jwtService.generateToken(user)
+        );
     }
 
     private String normalizeEmail(String email) {
@@ -103,7 +104,7 @@ public class AuthService {
                 user.getName(),
                 user.getEmail(),
                 user.getAddress(),
-                user.getRole().getName()
+                user.getRole().getName().toUpperCase(Locale.ROOT)
         );
     }
 }

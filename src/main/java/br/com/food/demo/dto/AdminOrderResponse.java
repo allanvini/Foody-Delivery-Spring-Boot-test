@@ -2,6 +2,7 @@ package br.com.food.demo.dto;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Locale;
 
 import br.com.food.demo.entity.Order;
 import br.com.food.demo.entity.User;
@@ -22,7 +23,7 @@ public record AdminOrderResponse(
                 user.getName(),
                 user.getEmail(),
                 user.getAddress(),
-                user.getRole().getName()
+                user.getRole().getName().toUpperCase(Locale.ROOT)
         );
 
         return new AdminOrderResponse(

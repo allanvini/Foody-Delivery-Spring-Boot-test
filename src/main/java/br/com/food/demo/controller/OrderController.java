@@ -24,12 +24,12 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
-import static br.com.food.demo.config.OpenApiConfig.BEARER_AUTH;
+import static br.com.food.demo.config.OpenApiConfig.COOKIE_AUTH;
 
 @RestController
 @RequestMapping("/api/orders")
 @Tag(name = "Pedidos", description = "Pedidos do usuário autenticado e atualização de status")
-@SecurityRequirement(name = BEARER_AUTH)
+@SecurityRequirement(name = COOKIE_AUTH)
 public class OrderController {
 
     private final OrderService orderService;
