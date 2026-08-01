@@ -48,7 +48,8 @@ public class JwtService {
         return new TokenResponse(
                 token,
                 "Bearer",
-                jwtProperties.accessTokenTtl().toSeconds()
+                jwtProperties.accessTokenTtl().toSeconds(),
+                role
         );
     }
 }

@@ -108,9 +108,10 @@ class DemoApplicationTests {
 						  "email": "admin@admin.com",
 						  "password": "1234"
 						}
-						"""))
+				"""))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.tokenType").value("Bearer"))
+				.andExpect(jsonPath("$.role").value("ADMIN"))
 				.andReturn();
 
 		String loginResponse = loginResult.getResponse().getContentAsString();
@@ -147,7 +148,7 @@ class DemoApplicationTests {
 	void swaggerDocumentationIsPublicAndDescribesTheApi() throws Exception {
 		mockMvc.perform(get("/v3/api-docs"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.info.title").value("Food Delivery API"))
+				.andExpect(jsonPath("$.info.title").value("Foody Delivery API"))
 				.andExpect(jsonPath("$.components.securitySchemes.bearerAuth").exists())
 				.andExpect(jsonPath("$.paths['/api/auth/login'].post.requestBody").exists())
 				.andExpect(jsonPath("$.paths['/api/items'].post.requestBody").exists())
@@ -181,6 +182,7 @@ class DemoApplicationTests {
 				.andExpect(jsonPath("$.user.password").doesNotExist())
 				.andExpect(jsonPath("$.token.tokenType").value("Bearer"))
 				.andExpect(jsonPath("$.token.expiresIn").value(3600))
+				.andExpect(jsonPath("$.token.role").value("USER"))
 				.andReturn();
 
 		String registerResponse = registerResult.getResponse().getContentAsString();

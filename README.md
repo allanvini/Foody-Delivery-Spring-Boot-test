@@ -123,7 +123,8 @@ O cadastro já autentica o novo usuário, grava o cookie `access_token` e retorn
   "token": {
     "accessToken": "eyJ...",
     "tokenType": "Bearer",
-    "expiresIn": 3600
+    "expiresIn": 3600,
+    "role": "USER"
   }
 }
 ```
@@ -150,9 +151,12 @@ A resposta contém um `accessToken` com validade de uma hora:
 {
   "accessToken": "eyJ...",
   "tokenType": "Bearer",
-  "expiresIn": 3600
+  "expiresIn": 3600,
+  "role": "USER"
 }
 ```
+
+O campo `role` será `USER` para clientes comuns e `ADMIN` para administradores, permitindo que o front-end controle a exibição de funcionalidades administrativas.
 
 O mesmo token também é enviado no cookie `access_token` com os atributos `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api` e `Max-Age=3600`. O corpo com o token foi mantido para compatibilidade com clientes que utilizam o header `Authorization`, como o Insomnia.
 
