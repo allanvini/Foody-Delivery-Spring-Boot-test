@@ -54,6 +54,10 @@ http://localhost:8080
 
 O arquivo `database.db` será criado automaticamente na raiz do projeto. As roles, os status dos pedidos e o administrador padrão são inseridos de forma idempotente ao iniciar a aplicação.
 
+## Modelo do banco de dados
+
+![Modelo do banco de dados](./db%20model.png)
+
 ## Swagger e documentação OpenAPI
 
 Com a aplicação em execução, abra:
