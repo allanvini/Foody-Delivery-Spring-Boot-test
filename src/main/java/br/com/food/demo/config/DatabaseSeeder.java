@@ -1,16 +1,18 @@
 package br.com.food.demo.config;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
+import br.com.food.demo.entity.Item;
 import br.com.food.demo.entity.OrderStatus;
 import br.com.food.demo.entity.Role;
 import br.com.food.demo.entity.User;
+import br.com.food.demo.repository.ItemRepository;
 import br.com.food.demo.repository.OrderStatusRepository;
 import br.com.food.demo.repository.RoleRepository;
 import br.com.food.demo.repository.UserRepository;
@@ -38,28 +40,39 @@ public class DatabaseSeeder implements ApplicationRunner {
             "Cancelado"
     );
 
+    private static final List<ItemSeed> ITEMS = List.of(
+            new ItemSeed("X-Burguer", "18.00", 30),
+            new ItemSeed("X-Salada", "20.00", 30),
+            new ItemSeed("Esfiha de Carne", "8.00", 30),
+            new ItemSeed("Coca-Cola 600ml", "8.00", 30),
+            new ItemSeed("Coca-Cola 2L", "14.00", 30)
+    );
+
     private final RoleRepository roleRepository;
     private final OrderStatusRepository orderStatusRepository;
     private final UserRepository userRepository;
+    private final ItemRepository itemRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DatabaseSeeder(
             RoleRepository roleRepository,
             OrderStatusRepository orderStatusRepository,
             UserRepository userRepository,
+            ItemRepository itemRepository,
             PasswordEncoder passwordEncoder
     ) {
         this.roleRepository = roleRepository;
         this.orderStatusRepository = orderStatusRepository;
         this.userRepository = userRepository;
+        this.itemRepository = itemRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
     @Override
-    @Transactional
     public void run(ApplicationArguments args) {
         ROLE_NAMES.forEach(this::createRoleIfMissing);
         ORDER_STATUS_NAMES.forEach(this::createOrderStatusIfMissing);
+        ITEMS.forEach(this::createItemIfMissing);
         createAdminIfMissing();
     }
 
@@ -73,6 +86,18 @@ public class DatabaseSeeder implements ApplicationRunner {
         if (orderStatusRepository.findByName(name).isEmpty()) {
             orderStatusRepository.save(new OrderStatus(name));
         }
+    }
+
+    private void createItemIfMissing(ItemSeed itemSeed) {
+        if (itemRepository.existsByNameIgnoreCase(itemSeed.name())) {
+            return;
+        }
+
+        Item item = new Item();
+        item.setName(itemSeed.name());
+        item.setPrice(new BigDecimal(itemSeed.price()));
+        item.setStock(itemSeed.stock());
+        itemRepository.save(item);
     }
 
     private void createAdminIfMissing() {
@@ -90,5 +115,8 @@ public class DatabaseSeeder implements ApplicationRunner {
         admin.setPassword(passwordEncoder.encode(ADMIN_PASSWORD));
         admin.setRole(adminRole);
         userRepository.save(admin);
+    }
+
+    private record ItemSeed(String name, String price, int stock) {
     }
 }

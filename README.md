@@ -52,7 +52,7 @@ A API ficará disponível em:
 http://localhost:8080
 ```
 
-O arquivo `database.db` será criado automaticamente na raiz do projeto. As roles, os status dos pedidos e o administrador padrão são inseridos de forma idempotente ao iniciar a aplicação.
+O arquivo `database.db` será criado automaticamente na raiz do projeto. As roles, os status dos pedidos, o administrador padrão e cinco produtos de demonstração são inseridos de forma idempotente ao iniciar a aplicação.
 
 ## Modelo do banco de dados
 

@@ -79,6 +79,11 @@ class DemoApplicationTests {
 	void contextLoads() {
 		assertEquals(2, roleRepository.count());
 		assertEquals(9, orderStatusRepository.count());
+		assertSeededItem("X-Burguer", "18.00", 30);
+		assertSeededItem("X-Salada", "20.00", 30);
+		assertSeededItem("Esfiha de Carne", "8.00", 30);
+		assertSeededItem("Coca-Cola 600ml", "8.00", 30);
+		assertSeededItem("Coca-Cola 2L", "14.00", 30);
 
 		User admin = userRepository.findByEmailIgnoreCase("admin@admin.com").orElseThrow();
 		Role adminRole = roleRepository.findByName("Admin").orElseThrow();
@@ -238,7 +243,7 @@ class DemoApplicationTests {
 		mockMvc.perform(get("/api/items")
 				.cookie(new Cookie("access_token", accessToken)))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[0].name").value("Hambúrguer"));
+				.andExpect(jsonPath("$[?(@.name == 'Hambúrguer')].name").value("Hambúrguer"));
 
 		mockMvc.perform(get("/api/orders")
 				.cookie(new Cookie("access_token", accessToken)))
@@ -452,6 +457,15 @@ class DemoApplicationTests {
 		orderItem.setItem(item);
 		orderItem.setQuantity(2);
 		orderItemRepository.save(orderItem);
+	}
+
+	private void assertSeededItem(String name, String price, int stock) {
+		Item item = itemRepository.findAll().stream()
+				.filter(candidate -> candidate.getName().equals(name))
+				.findFirst()
+				.orElseThrow();
+		assertEquals(0, new BigDecimal(price).compareTo(item.getPrice()));
+		assertEquals(stock, item.getStock());
 	}
 
 	private void createOrderForAnotherUser() {
